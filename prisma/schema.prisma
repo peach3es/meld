@@ -6,10 +6,213 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Enums
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+  SAVINGS
+}
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  ACHIEVED
+  CANCELLED
+}
+
+enum Recurrence {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  CUSTOM
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+//Jars
+model Jar {
+  id        String   @id @default(cuid())
+  name      String
+  currency  String   @default("CAD") @db.VarChar(3)
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members    JarMember[]
+  categories Category[]
+  budgets    Budget[]
+  txns       Transaction[]
+  goals      Goal[]
+  invites    Invite[]
+  recurring  RecurringTransaction[]
+
+  counterpartyTxns Transaction[] @relation("TransferCounterparty")
+
+  @@index([createdBy])
+}
+
+model JarMember {
+  id       String     @id @default(cuid())
+  jarId    String
+  userId   String // supabase auth user id
+  role     MemberRole @default(MEMBER)
+  joinedAt DateTime   @default(now())
+
+  Jar Jar @relation(fields: [jarId], references: [id], onDelete: Cascade)
+
+  @@unique([jarId, userId]) // user joins a jar once
+  @@index([userId])
+}
+
+//Catalog and Budget
+model Category {
+  id         String       @id @default(cuid())
+  jarId      String
+  name       String
+  entryType  CategoryType @default(EXPENSE)
+  icon       String? // e.g. "car", "food" if you want
+  isArchived Boolean      @default(false)
+
+  Jar     Jar           @relation(fields: [jarId], references: [id], onDelete: Cascade)
+  budgets Budget[]
+  txns    Transaction[]
+
+  recurring RecurringTransaction[]
+
+  @@unique([jarId, name]) // name unique per jar
+  @@index([jarId, entryType, isArchived])
+}
+
+model Budget {
+  id         String  @id @default(cuid())
+  jarId      String
+  categoryId String
+  monthly    Decimal @db.Decimal(12, 2) // monthly limit for that category
+
+  Jar      Jar      @relation(fields: [jarId], references: [id], onDelete: Cascade)
+  Category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([jarId, categoryId]) // one budget per category in a jar
+  @@index([jarId])
+}
+
+//Transaction & Savings
+
+model Transaction {
+  id                        String          @id @default(cuid())
+  jarId                     String
+  createdBy                 String // supabase auth user id
+  type                      TransactionType
+  amount                    Decimal         @db.Decimal(12, 2)
+  currency                  String          @default("CAD") @db.VarChar(3)
+  categoryId                String? // may be null for transfers/income w/o category
+  goalId                    String? // set when contributing to a goal
+  date                      DateTime        @default(now())
+  note                      String?
+  // For transfers: optional counterparty jar (e.g., moving money between jars)
+  transferCounterpartyJarId String?
+
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Jar             Jar       @relation(fields: [jarId], references: [id], onDelete: Cascade)
+  Category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  Goal            Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  CounterpartyJar Jar?      @relation("TransferCounterparty", fields: [transferCounterpartyJarId], references: [id])
+
+  @@index([jarId, date])
+  @@index([jarId, categoryId])
+  @@index([createdBy])
+  @@index([jarId, type, date])
+}
+
+model Goal {
+  id           String     @id @default(cuid())
+  jarId        String
+  name         String
+  targetAmount Decimal    @db.Decimal(12, 2)
+  targetDate   DateTime?
+  status       GoalStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  Jar           Jar           @relation(fields: [jarId], references: [id], onDelete: Cascade)
+  contributions Transaction[] // Transactions with goalId referencing this goal
+
+  recurring RecurringTransaction[]
+
+  @@unique([jarId, name])
+  @@index([jarId, status])
+}
+
+//Invites & Recurring
+
+model Invite {
+  id        String       @id @default(cuid())
+  jarId     String
+  email     String
+  token     String       @unique
+  status    InviteStatus @default(PENDING)
+  invitedBy String // supabase user id
+  expiresAt DateTime?
+  createdAt DateTime     @default(now())
+
+  Jar Jar @relation(fields: [jarId], references: [id], onDelete: Cascade)
+
+  @@index([jarId, email])
+}
+
+model RecurringTransaction {
+  id         String          @id @default(cuid())
+  jarId      String
+  createdBy  String
+  type       TransactionType
+  amount     Decimal         @db.Decimal(12, 2)
+  currency   String          @default("CAD") @db.VarChar(3)
+  categoryId String?
+  goalId     String?
+  cadence    Recurrence      @default(MONTHLY)
+  interval   Int             @default(1) // every N cadence units
+  // Scheduling helpers (use what you need)
+  weekday    Int? // 0..6 (Sun..Sat) for WEEKLY
+  dayOfMonth Int? // 1..31 for MONTHLY
+  startDate  DateTime
+  endDate    DateTime?
+  nextRunAt  DateTime
+  note       String?
+  active     Boolean         @default(true)
+  metadata   Json?
+
+  Jar      Jar       @relation(fields: [jarId], references: [id], onDelete: Cascade)
+  Category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  Goal     Goal?     @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@index([jarId, active, nextRunAt])
 }
