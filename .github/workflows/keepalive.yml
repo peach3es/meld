@@ -22,7 +22,7 @@ jobs:
           code=$(curl -s -o /dev/null -w "%{http_code}" "$PING_URL")
           echo "HTTP $code"
           # treat anything 2xx as success
-          if [ "${code%??}" != "20" ]; then
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
             echo "Ping failed with $code"
             exit 1
           fi
