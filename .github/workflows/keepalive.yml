@@ -1,0 +1,28 @@
+name: Keep Supabase Warm
+
+on:
+  schedule:
+    # Daily at 13:00 UTC (pick any time)
+    - cron: "0 13 */3 * *"
+  workflow_dispatch: {} # allow manual runs
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl keepalive
+        env:
+          PING_URL: ${{ vars.PING_URL }}
+        run: |
+          if [ -z "$PING_URL" ]; then
+            echo "Set the repo variable PING_URL to your deployed /api/keepalive URL"
+            exit 1
+          fi
+          echo "Pinging $PING_URL..."
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$PING_URL")
+          echo "HTTP $code"
+          # treat anything 2xx as success
+          if [ "${code%??}" != "20" ]; then
+            echo "Ping failed with $code"
+            exit 1
+          fi
