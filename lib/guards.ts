@@ -78,8 +78,8 @@ export async function assertChildOwnership(
   id: string,
   userId: string
 ): Promise<string> {
-  const fetch = CHILD_SELECTORS[kind];
-  const child = await fetch(id);
+  const fetch = CHILD_SELECTORS[kind]; // compile-time exhaustiveness via `satisfies`
+  const child = await fetch(id); // { jarId } | null
   if (!child) throw new HttpError(404, "Not found");
   await requireMember(child.jarId, userId);
   return child.jarId;

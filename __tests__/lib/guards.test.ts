@@ -15,8 +15,6 @@ const prismaFns = vi.hoisted(() => {
 });
 
 // --- Mocks ---
-
-// Supabase server helper mock (simple, no hoisted vars needed)
 vi.mock("@/lib/supabase/server", () => {
   return {
     supabaseServer: vi.fn().mockResolvedValue({
@@ -29,7 +27,6 @@ vi.mock("@/lib/supabase/server", () => {
   };
 });
 
-// Prisma client mock uses the hoisted fns above
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     jarMember: { findUnique: prismaFns.jarMemberFindUnique },
@@ -44,7 +41,6 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-// Import after mocks are defined
 import {
   getUserId,
   requireUserId,
@@ -56,14 +52,13 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // default auth: logged in user
-  (supabaseServer as any).mockResolvedValue({
+  vi.mocked(supabaseServer).mockResolvedValue({
     auth: {
       getUser: vi
         .fn()
         .mockResolvedValue({ data: { user: { id: "u1" } }, error: null }),
     },
-  });
+  } as any);
 });
 
 describe("guards", () => {
@@ -78,13 +73,13 @@ describe("guards", () => {
   });
 
   it("requireUserId throws 401 when unauthenticated", async () => {
-    (supabaseServer as any).mockResolvedValueOnce({
+    vi.mocked(supabaseServer).mockResolvedValueOnce({
       auth: {
         getUser: vi
           .fn()
           .mockResolvedValue({ data: { user: null }, error: null }),
       },
-    });
+    } as any);
 
     await expect(requireUserId()).rejects.toMatchObject({
       status: 401,
