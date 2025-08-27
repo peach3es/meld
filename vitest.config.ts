@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: ["./tests/setup.ts"],
+    setupFiles: ["./__tests__/setup.ts"],
     css: true, // lets RTL import CSS from shadcn
     include: ["**/*.{test,spec}.[jt]s?(x)"],
   },
@@ -13,7 +13,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "."),
       "@/*": path.resolve(__dirname, "/*"),
-      "server-only": path.resolve(__dirname, "tests/mocks/server-only.ts"),
+      "server-only": path.resolve(__dirname, "__tests__/mocks/server-only.ts"),
     },
   },
 });

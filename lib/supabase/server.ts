@@ -1,6 +1,6 @@
 // lib/supabase/server.ts
 import "server-only";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 /**
