@@ -52,71 +52,35 @@ export type ChildKind =
   | "invite"
   | "recurringTransaction";
 
+const CHILD_SELECTORS = {
+  transaction: (id: string) =>
+    prisma.transaction.findUnique({ where: { id }, select: { jarId: true } }),
+  category: (id: string) =>
+    prisma.category.findUnique({ where: { id }, select: { jarId: true } }),
+  budget: (id: string) =>
+    prisma.budget.findUnique({ where: { id }, select: { jarId: true } }),
+  goal: (id: string) =>
+    prisma.goal.findUnique({ where: { id }, select: { jarId: true } }),
+  invite: (id: string) =>
+    prisma.invite.findUnique({ where: { id }, select: { jarId: true } }),
+  recurringTransaction: (id: string) =>
+    prisma.recurringTransaction.findUnique({
+      where: { id },
+      select: { jarId: true },
+    }),
+} satisfies Record<
+  ChildKind,
+  (id: string) => Promise<{ jarId: string } | null>
+>;
+
 export async function assertChildOwnership(
   kind: ChildKind,
   id: string,
   userId: string
 ): Promise<string> {
-  // per-model minimal selectors to fetch jarId
-  switch (kind) {
-    case "transaction": {
-      const child = await prisma.transaction.findUnique({
-        where: { id },
-        select: { jarId: true },
-      });
-      if (!child) throw new HttpError(404, "Not found");
-      await requireMember(child.jarId, userId);
-      return child.jarId;
-    }
-    case "category": {
-      const child = await prisma.category.findUnique({
-        where: { id },
-        select: { jarId: true },
-      });
-      if (!child) throw new HttpError(404, "Not found");
-      await requireMember(child.jarId, userId);
-      return child.jarId;
-    }
-    case "budget": {
-      const child = await prisma.budget.findUnique({
-        where: { id },
-        select: { jarId: true },
-      });
-      if (!child) throw new HttpError(404, "Not found");
-      await requireMember(child.jarId, userId);
-      return child.jarId;
-    }
-    case "goal": {
-      const child = await prisma.goal.findUnique({
-        where: { id },
-        select: { jarId: true },
-      });
-      if (!child) throw new HttpError(404, "Not found");
-      await requireMember(child.jarId, userId);
-      return child.jarId;
-    }
-    case "invite": {
-      const child = await prisma.invite.findUnique({
-        where: { id },
-        select: { jarId: true },
-      });
-      if (!child) throw new HttpError(404, "Not found");
-      await requireMember(child.jarId, userId);
-      return child.jarId;
-    }
-    case "recurringTransaction": {
-      const child = await prisma.recurringTransaction.findUnique({
-        where: { id },
-        select: { jarId: true },
-      });
-      if (!child) throw new HttpError(404, "Not found");
-      await requireMember(child.jarId, userId);
-      return child.jarId;
-    }
-    default:
-      // exhaustive guard for TS
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const _never: never = kind;
-      throw new Error(`Unknown child kind: ${kind}`);
-  }
+  const fetch = CHILD_SELECTORS[kind];
+  const child = await fetch(id);
+  if (!child) throw new HttpError(404, "Not found");
+  await requireMember(child.jarId, userId);
+  return child.jarId;
 }
