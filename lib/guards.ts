@@ -52,22 +52,27 @@ export type ChildKind =
   | "invite"
   | "recurringTransaction";
 
+const jarById =
+  <
+    T extends {
+      findUnique: (args: {
+        where: { id: string };
+        select: { jarId: true };
+      }) => any;
+    }
+  >(
+    model: T
+  ) =>
+  (id: string) =>
+    model.findUnique({ where: { id }, select: { jarId: true } });
+
 const CHILD_SELECTORS = {
-  transaction: (id: string) =>
-    prisma.transaction.findUnique({ where: { id }, select: { jarId: true } }),
-  category: (id: string) =>
-    prisma.category.findUnique({ where: { id }, select: { jarId: true } }),
-  budget: (id: string) =>
-    prisma.budget.findUnique({ where: { id }, select: { jarId: true } }),
-  goal: (id: string) =>
-    prisma.goal.findUnique({ where: { id }, select: { jarId: true } }),
-  invite: (id: string) =>
-    prisma.invite.findUnique({ where: { id }, select: { jarId: true } }),
-  recurringTransaction: (id: string) =>
-    prisma.recurringTransaction.findUnique({
-      where: { id },
-      select: { jarId: true },
-    }),
+  transaction: jarById(prisma.transaction),
+  category: jarById(prisma.category),
+  budget: jarById(prisma.budget),
+  goal: jarById(prisma.goal),
+  invite: jarById(prisma.invite),
+  recurringTransaction: jarById(prisma.recurringTransaction),
 } satisfies Record<
   ChildKind,
   (id: string) => Promise<{ jarId: string } | null>
