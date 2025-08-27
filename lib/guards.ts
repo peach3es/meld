@@ -52,17 +52,16 @@ export type ChildKind =
   | "invite"
   | "recurringTransaction";
 
+type JarIdRow = { jarId: string };
+type FindUniqueJarId = (args: {
+  where: { id: string };
+  select: { jarId: true };
+}) => Promise<JarIdRow | null>;
+
+type PrismaModelWithJarId = { findUnique: FindUniqueJarId };
+
 const jarById =
-  <
-    T extends {
-      findUnique: (args: {
-        where: { id: string };
-        select: { jarId: true };
-      }) => any;
-    }
-  >(
-    model: T
-  ) =>
+  <M extends PrismaModelWithJarId>(model: M) =>
   (id: string) =>
     model.findUnique({ where: { id }, select: { jarId: true } });
 
