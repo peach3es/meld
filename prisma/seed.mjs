@@ -95,7 +95,6 @@ async function main() {
   await prisma.transaction.createMany({
     data: [
       {
-        id: undefined,
         jarId: jar.id,
         createdBy: DEMO_USER_ID,
         type: TransactionType.INCOME,
