@@ -15,7 +15,7 @@ if (process.env.APP_ENV !== "dev") {
 }
 
 const DEMO_USER_ID = process.env.DEMO_USER_ID;
-const OPERATING_JAR_NAME = "Operating";
+const OPERATING_JAR_NAME = process.env.OPERATING_JAR_NAME;
 const SAVINGS_JAR_NAME = process.env.DEMO_JAR_NAME;
 
 const dec = (s) => new Prisma.Decimal(s);
@@ -47,6 +47,13 @@ async function ensureCategory(jarId, name, entryType) {
     data: { jarId, name, entryType },
   });
 }
+
+const upsertTxn = (id, data) =>
+  prisma.transaction.upsert({
+    where: { id },
+    update: {},
+    create: { id, ...data },
+  });
 
 async function main() {
   console.log("Seeding…");
@@ -97,68 +104,59 @@ async function main() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // Income into Operating
-  await prisma.transaction.create({
-    data: {
-      jarId: operating.id,
-      createdBy: DEMO_USER_ID,
-      type: TransactionType.INCOME,
-      amount: dec("3000.00"),
-      currency: "CAD",
-      categoryId: salaryCat.id,
-      date: monthStart,
-      note: "Monthly salary",
-    },
+  await upsertTxn("seed-income-salary", {
+    jarId: operating.id,
+    createdBy: DEMO_USER_ID,
+    type: TransactionType.INCOME,
+    amount: dec("3000.00"),
+    currency: "CAD",
+    categoryId: salaryCat.id,
+    date: monthStart,
+    note: "Monthly salary",
   });
 
   // Expenses from Operating
-  await prisma.transaction.createMany({
-    data: [
-      {
-        jarId: operating.id,
-        createdBy: DEMO_USER_ID,
-        type: TransactionType.EXPENSE,
-        amount: dec("1200.00"),
-        currency: "CAD",
-        categoryId: rent.id,
-        date: monthStart,
-        note: "Rent",
-      },
-      {
-        jarId: operating.id,
-        createdBy: DEMO_USER_ID,
-        type: TransactionType.EXPENSE,
-        amount: dec("120.34"),
-        currency: "CAD",
-        categoryId: groceries.id,
-        date: new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          Math.min(5, now.getDate())
-        ),
-        note: "Groceries",
-      },
-    ],
-    skipDuplicates: true,
+  await upsertTxn("seed-expense-rent", {
+    jarId: operating.id,
+    createdBy: DEMO_USER_ID,
+    type: TransactionType.EXPENSE,
+    amount: dec("1200.00"),
+    currency: "CAD",
+    categoryId: rent.id,
+    date: monthStart,
+    note: "Rent",
+  });
+
+  await upsertTxn("seed-expense-groceries", {
+    jarId: operating.id,
+    createdBy: DEMO_USER_ID,
+    type: TransactionType.EXPENSE,
+    amount: dec("120.34"),
+    currency: "CAD",
+    categoryId: groceries.id,
+    date: new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      Math.min(5, now.getDate())
+    ),
+    note: "Groceries",
   });
 
   // 7) Transfer: Operating -> Savings (single row recorded on source jar)
-  await prisma.transaction.create({
-    data: {
-      jarId: operating.id, // source jar
-      createdBy: DEMO_USER_ID,
-      type: TransactionType.TRANSFER,
-      amount: dec("100.00"),
-      currency: "CAD",
-      transferCounterpartyJarId: savings.id, // destination jar
-      goalId: goal.id, // optional: link to the goal in the savings jar
-      date: new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        Math.min(10, now.getDate())
-      ),
-      note: "Move to Emergency Fund",
-      // categoryId: null, // transfers usually don't need categories
-    },
+  await upsertTxn("seed-transfer-operating-to-savings", {
+    jarId: operating.id,
+    createdBy: DEMO_USER_ID,
+    type: TransactionType.TRANSFER,
+    amount: dec("100.00"),
+    currency: "CAD",
+    transferCounterpartyJarId: savings.id,
+    goalId: goal.id,
+    date: new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      Math.min(10, now.getDate())
+    ),
+    note: "Move to Emergency Fund",
   });
 
   // 8) Example recurring INCOME on Operating
