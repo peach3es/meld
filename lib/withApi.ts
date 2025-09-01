@@ -58,7 +58,6 @@ export function withApi(handler: ApiHandler) {
       if (err instanceof HttpError) {
         return json({ error: err.toPayload() }, { status: err.status });
       }
-      // eslint-disable-next-line no-console
       console.error("[withApi] Unhandled error:", err);
       return json(
         { error: { message: "Internal Server Error" } },

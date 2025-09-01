@@ -1,12 +1,13 @@
 // app/api/jars/[jarId]/transactions/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { supabaseServer } from "@/lib/supabase/server";
 import { HttpError, requireUserId, requireMember } from "@/lib/guards";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 export const runtime = "nodejs";
+
+type JarParams = Promise<{ jarId: string }>;
 
 // ---------- validation ----------
 const TxType = z.enum(["INCOME", "EXPENSE", "TRANSFER"]);
@@ -37,18 +38,16 @@ const toRes = (e: unknown) =>
       NextResponse.json({ error: "Internal Server Error" }, { status: 500 }));
 
 // ---------- GET /api/jars/:jarId/transactions ----------
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { jarId: string } }
-) {
+export async function GET(req: NextRequest, ctx: { params: JarParams }) {
   try {
+    const { jarId } = await ctx.params;
     const userId = await requireUserId(); // guard.ts
-    await requireMember(params.jarId, userId); // guard.ts
+    await requireMember(jarId, userId); // guard.ts
 
     const raw = Object.fromEntries(new URL(req.url).searchParams);
     const q = ListQuery.parse(raw);
 
-    const where: Prisma.TransactionWhereInput = { jarId: params.jarId };
+    const where: Prisma.TransactionWhereInput = { jarId: jarId };
     if (q.type) where.type = q.type;
     if (q.from || q.to) {
       where.date = {
@@ -70,13 +69,11 @@ export async function GET(
 }
 
 // ---------- POST /api/jars/:jarId/transactions ----------
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { jarId: string } }
-) {
+export async function POST(req: NextRequest, ctx: { params: JarParams }) {
   try {
+    const { jarId } = await ctx.params;
     const userId = await requireUserId(); // guard.ts
-    await requireMember(params.jarId, userId); // guard.ts
+    await requireMember(jarId, userId); // guard.ts
 
     const body = CreateBody.parse(await req.json());
 
@@ -89,7 +86,7 @@ export async function POST(
         throw new HttpError(400, "categoryId is required for INCOME/EXPENSE.");
 
       const cat = await prisma.category.findFirst({
-        where: { id: body.categoryId, jarId: params.jarId },
+        where: { id: body.categoryId, jarId: jarId },
         select: { entryType: true },
       });
       if (!cat) throw new HttpError(400, "Category not found in this jar.");
@@ -101,7 +98,7 @@ export async function POST(
 
     const created = await prisma.transaction.create({
       data: {
-        jarId: params.jarId,
+        jarId: jarId,
         createdBy: userId,
         type: body.type,
         amount: new Prisma.Decimal(body.amount),

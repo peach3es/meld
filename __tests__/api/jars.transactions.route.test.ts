@@ -52,7 +52,7 @@ describe("POST /api/jars/:jarId/transactions", () => {
         type: "EXPENSE",
         categoryId: "cat1",
       }) as any,
-      { params: { jarId: "jar1" } }
+      { params: Promise.resolve({ jarId: "jar1" }) }
     );
 
     expect(res.status).toBe(201);
@@ -70,7 +70,7 @@ describe("POST /api/jars/:jarId/transactions", () => {
         type: "EXPENSE",
         categoryId: "cat1",
       }) as any,
-      { params: { jarId: "jar1" } }
+      { params: Promise.resolve({ jarId: "jar1" }) }
     );
 
     expect(res.status).toBe(400);
@@ -87,7 +87,7 @@ describe("POST /api/jars/:jarId/transactions", () => {
         type: "INCOME",
         categoryId: "cat99",
       }) as any,
-      { params: { jarId: "jar1" } }
+      { params: Promise.resolve({ jarId: "jar1" }) }
     );
 
     expect(res.status).toBe(403);
