@@ -2,16 +2,7 @@
 import "server-only";
 import { supabaseServer } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-
-// tiny HTTP-style error for route handlers / server actions
-export class HttpError extends Error {
-  status: number;
-  constructor(status: number, message?: string) {
-    super(message ?? `HTTP ${status}`);
-    this.name = "HttpError";
-    this.status = status;
-  }
-}
+import { HttpError, forbidden } from "@/lib/withApi";
 
 /** Returns the current Supabase user id (server-side), or null. */
 export async function getUserId(): Promise<string | null> {
@@ -29,15 +20,12 @@ export async function requireUserId(): Promise<string> {
 }
 
 /** Throws 403 if the user is NOT a member of the given jar. */
-export async function requireMember(
-  jarId: string,
-  userId: string
-): Promise<void> {
+export async function requireMember(jarId: string, userId: string) {
   const member = await prisma.jarMember.findUnique({
     where: { jarId_userId: { jarId, userId } }, // uses your composite unique
     select: { userId: true },
   });
-  if (!member) throw new HttpError(403, "Forbidden");
+  if (!member) forbidden(); // throws HttpError(403, "Forbidden")
 }
 
 /**

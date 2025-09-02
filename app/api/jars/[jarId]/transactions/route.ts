@@ -1,7 +1,8 @@
 // app/api/jars/[jarId]/transactions/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { HttpError, requireUserId, requireMember } from "@/lib/guards";
+import { requireUserId, requireMember } from "@/lib/guards";
+import { HttpError, withApi } from "@/lib/withApi";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
@@ -13,17 +14,16 @@ type JarParams = Promise<{ jarId: string }>;
 const TxType = z.enum(["INCOME", "EXPENSE", "TRANSFER"]);
 
 const ListQuery = z.object({
-  from: z.coerce.date().optional(), // accepts ISO string, outputs Date
+  from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   type: TxType.optional(),
 });
 
 const CreateBody = z.object({
-  // your Transaction fields
-  date: z.coerce.date(), // ISO string -> Date
+  date: z.coerce.date(),
   amount: z.number().positive(),
   type: TxType,
-  currency: z.string().length(3).optional(), // defaults to "CAD" in DB if omitted
+  currency: z.string().length(3).optional(),
   categoryId: z.string().optional().nullable(),
   note: z.string().max(500).optional(),
   goalId: z.string().optional().nullable(),
@@ -31,23 +31,17 @@ const CreateBody = z.object({
   metadata: z.any().optional(),
 });
 
-const toRes = (e: unknown) =>
-  e instanceof HttpError
-    ? NextResponse.json({ error: e.message }, { status: e.status })
-    : (console.error(e),
-      NextResponse.json({ error: "Internal Server Error" }, { status: 500 }));
-
 // ---------- GET /api/jars/:jarId/transactions ----------
-export async function GET(req: NextRequest, ctx: { params: JarParams }) {
-  try {
+export const GET = withApi<{ params: JarParams }, NextRequest>(
+  async (req, ctx) => {
     const { jarId } = await ctx.params;
-    const userId = await requireUserId(); // guard.ts
-    await requireMember(jarId, userId); // guard.ts
+    const userId = await requireUserId();
+    await requireMember(jarId, userId);
 
     const raw = Object.fromEntries(new URL(req.url).searchParams);
     const q = ListQuery.parse(raw);
 
-    const where: Prisma.TransactionWhereInput = { jarId: jarId };
+    const where: Prisma.TransactionWhereInput = { jarId };
     if (q.type) where.type = q.type;
     if (q.from || q.to) {
       where.date = {
@@ -62,18 +56,19 @@ export async function GET(req: NextRequest, ctx: { params: JarParams }) {
       include: { Category: true },
     });
 
-    return NextResponse.json(rows, { status: 200 });
-  } catch (e) {
-    return toRes(e);
+    return new Response(JSON.stringify(rows), {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
   }
-}
+);
 
 // ---------- POST /api/jars/:jarId/transactions ----------
-export async function POST(req: NextRequest, ctx: { params: JarParams }) {
-  try {
+export const POST = withApi<{ params: JarParams }, NextRequest>(
+  async (req, ctx) => {
     const { jarId } = await ctx.params;
-    const userId = await requireUserId(); // guard.ts
-    await requireMember(jarId, userId); // guard.ts
+    const userId = await requireUserId();
+    await requireMember(jarId, userId);
 
     const body = CreateBody.parse(await req.json());
 
@@ -86,7 +81,7 @@ export async function POST(req: NextRequest, ctx: { params: JarParams }) {
         throw new HttpError(400, "categoryId is required for INCOME/EXPENSE.");
 
       const cat = await prisma.category.findFirst({
-        where: { id: body.categoryId, jarId: jarId },
+        where: { id: body.categoryId, jarId },
         select: { entryType: true },
       });
       if (!cat) throw new HttpError(400, "Category not found in this jar.");
@@ -98,23 +93,25 @@ export async function POST(req: NextRequest, ctx: { params: JarParams }) {
 
     const created = await prisma.transaction.create({
       data: {
-        jarId: jarId,
+        jarId,
         createdBy: userId,
         type: body.type,
         amount: new Prisma.Decimal(body.amount),
-        currency: body.currency ?? undefined,
+        currency: body.currency, // simplified
         categoryId: body.categoryId ?? null,
         goalId: body.goalId ?? null,
         date: body.date,
         note: body.note ?? null,
         transferCounterpartyJarId: body.transferCounterpartyJarId ?? null,
-        metadata: body.metadata ?? undefined,
+        metadata: body.metadata, // simplified
       },
       include: { Category: true },
     });
 
-    return NextResponse.json(created, { status: 201 });
-  } catch (e) {
-    return toRes(e);
+    // withApi: 200 by default; if you prefer 201:
+    return new Response(JSON.stringify(created), {
+      status: 201,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
   }
-}
+);
