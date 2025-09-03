@@ -1,26 +1,30 @@
 // lib/guards.ts
 import "server-only";
+import { headers } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { HttpError } from "@/lib/withApi";
 
-// tiny HTTP-style error for route handlers / server actions
-export class HttpError extends Error {
-  status: number;
-  constructor(status: number, message?: string) {
-    super(message ?? `HTTP ${status}`);
-    this.name = "HttpError";
-    this.status = status;
-  }
-}
 
 /** Returns the current Supabase user id (server-side), or null. */
 export async function getUserId(): Promise<string | null> {
+  let jwt: string | undefined;
+
+  try {
+    const h = await headers();
+    const auth = h.get("authorization") ?? null;
+    if (auth && auth.toLowerCase().startsWith("bearer ")) {
+      jwt = auth.slice(7).trim();
+    }
+  } catch {
+    // No request scope in unit tests -> ignore and continue.
+  }
+
   const supabase = await supabaseServer();
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser(jwt);
   if (error) return null;
   return data.user?.id ?? null;
 }
-
 /** Requires a logged-in user; throws 401 if unauthenticated. */
 export async function requireUserId(): Promise<string> {
   const id = await getUserId();
@@ -29,14 +33,12 @@ export async function requireUserId(): Promise<string> {
 }
 
 /** Throws 403 if the user is NOT a member of the given jar. */
-export async function requireMember(
-  jarId: string,
-  userId: string
-): Promise<void> {
+export async function requireMember(jarId: string, userId: string) {
   const member = await prisma.jarMember.findUnique({
-    where: { jarId_userId: { jarId, userId } }, // uses your composite unique
+    where: { jarId_userId: { jarId, userId } },
     select: { userId: true },
   });
+  // Match your tests' expectation:
   if (!member) throw new HttpError(403, "Forbidden");
 }
 
