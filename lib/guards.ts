@@ -3,7 +3,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { HttpError, forbidden } from "@/lib/withApi";
+import { HttpError } from "@/lib/withApi";
 
 
 /** Returns the current Supabase user id (server-side), or null. */
@@ -11,7 +11,7 @@ export async function getUserId(): Promise<string | null> {
   let jwt: string | undefined;
 
   try {
-    const h: any = await (headers() as any);
+    const h = await headers();
     const auth = h.get("authorization") ?? null;
     if (auth && auth.toLowerCase().startsWith("bearer ")) {
       jwt = auth.slice(7).trim();

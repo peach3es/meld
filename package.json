@@ -9,12 +9,10 @@
     "lint": "next lint",
     "test": "vitest",
     "postinstall": "prisma generate",
-    
     "sb:start": "supabase start",
     "sb:stop": "supabase stop",
     "sb:status": "supabase status",
     "sb:restart": "supabase stop && supabase start",
-
     "db:gen": "prisma generate",
     "db:migrate:dev": "dotenv -e .env.local -- prisma migrate dev",
     "db:reset:dev": "dotenv -e .env.local -- prisma migrate reset --force --skip-seed && node --env-file=.env.local prisma/seed.mjs",
