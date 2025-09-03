@@ -94,18 +94,17 @@ export const POST = withApi<{ params: JarParams }, NextRequest>(
         createdBy: userId,
         type: body.type,
         amount: new Prisma.Decimal(body.amount),
-        currency: body.currency, // simplified
+        currency: body.currency, 
         categoryId: body.categoryId ?? null,
         goalId: body.goalId ?? null,
         date: body.date,
         note: body.note ?? null,
         transferCounterpartyJarId: body.transferCounterpartyJarId ?? null,
-        metadata: body.metadata, // simplified
+        metadata: body.metadata,
       },
       include: { Category: true },
     });
 
-    // withApi: 200 by default; if you prefer 201:
     return NextResponse.json(created, { status: 201 });
   }
 );
