@@ -56,10 +56,7 @@ export const GET = withApi<{ params: JarParams }, NextRequest>(
       include: { Category: true },
     });
 
-    return new Response(JSON.stringify(rows), {
-      status: 200,
-      headers: { "content-type": "application/json; charset=utf-8" },
-    });
+    return rows;
   }
 );
 
