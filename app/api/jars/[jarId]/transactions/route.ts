@@ -1,5 +1,5 @@
 // app/api/jars/[jarId]/transactions/route.ts
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId, requireMember } from "@/lib/guards";
 import { HttpError, withApi } from "@/lib/withApi";
@@ -106,9 +106,6 @@ export const POST = withApi<{ params: JarParams }, NextRequest>(
     });
 
     // withApi: 200 by default; if you prefer 201:
-    return new Response(JSON.stringify(created), {
-      status: 201,
-      headers: { "content-type": "application/json; charset=utf-8" },
-    });
+    return NextResponse.json(created, { status: 201 });
   }
 );

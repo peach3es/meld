@@ -24,7 +24,8 @@ export async function getUserId(): Promise<string | null> {
   const { data, error } = await supabase.auth.getUser(jwt);
   if (error) return null;
   return data.user?.id ?? null;
-}/** Requires a logged-in user; throws 401 if unauthenticated. */
+}
+/** Requires a logged-in user; throws 401 if unauthenticated. */
 export async function requireUserId(): Promise<string> {
   const id = await getUserId();
   if (!id) throw new HttpError(401, "Unauthorized");
