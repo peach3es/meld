@@ -1,36 +1,51 @@
 // app/api/keepalive/route.ts
-export const dynamic = "force-dynamic"; // don’t cache
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET() {
-  const url = process.env.SUPABASE_URL;
-  const anon = process.env.SUPABASE_ANON_KEY;
+  const url       = process.env.SUPABASE_URL;                // https://<project_ref>.supabase.co
+  const srk       = process.env.SUPABASE_SERVICE_ROLE_KEY;   // server-only, never expose client-side
+  const resource  = process.env.KEEPALIVE_TABLE;          // e.g., "transactions" or a tiny view like "heartbeat"
+  const select    = process.env.KEEPALIVE_COLUMN || "id";    // a light column; "*" if unsure
+  const at        = new Date().toISOString();
 
-  if (!url || !anon) {
-    // Don’t throw; we still return 204 to avoid failing cron runs,
-    // but log a warning to help debugging in Vercel logs.
-    console.warn("KEEPALIVE: missing SUPABASE_URL or ANON_KEY");
-    return new Response(null, { status: 204 });
+  if (!url || !srk || !resource) {
+    console.warn("KEEPALIVE: missing SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY/KEEPALIVE_TABLE");
+    return Response.json({ ok: false, message: "keepalive skipped (missing env)", at }, { status: 200 });
   }
 
+  const qs = new URLSearchParams({ select, limit: "1" });
+
   try {
-    // A safe, lightweight GET that requires only the anon key.
-    // This hits Supabase Auth and should count as activity.
-    const res = await fetch(`${url}/auth/v1/settings`, {
+    const r = await fetch(`${url}/rest/v1/${encodeURIComponent(resource)}?${qs}`, {
       method: "GET",
-      headers: { apikey: anon },
-      // avoid caching at the proxy/CDN
+      headers: {
+        apikey: srk,
+        authorization: `Bearer ${srk}`,
+        Prefer: "count=none",
+      },
       cache: "no-store",
       next: { revalidate: 0 },
     });
 
-    if (!res.ok) {
-      console.warn("KEEPALIVE: non-OK response", res.status);
+    if (!r.ok) {
+      console.warn("KEEPALIVE: REST select failed", r.status);
     }
-  } catch (e) {
-    // Swallow errors so the route is always 204, but log for visibility.
-    console.warn("KEEPALIVE: fetch error", e);
-  }
 
-  return new Response(null, { status: 204 });
+    return Response.json(
+      {
+        ok: r.ok,
+        message: r.ok ? "keepalive OK (DB touched via REST)" : `keepalive REST error (status ${r.status})`,
+        at,
+        resource,
+        select,
+        status: r.status,
+      },
+      { status: 200 } // always 200 so your cron doesn't fail noisily
+    );
+  } catch (e) {
+    console.warn("KEEPALIVE: REST error", e);
+    return Response.json({ ok: false, message: "keepalive exception (see logs)", at }, { status: 200 });
+  }
 }
