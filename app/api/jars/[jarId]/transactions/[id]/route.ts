@@ -12,7 +12,7 @@ async function authorize(jarId: string, txId: string, userId: string) {
 }
 
 export const GET = withApi<Ctx>(async (_req, { params }) => {
-const { jarId, id } = await params;
+  const { jarId, id } = await params;
   const userId = await requireUserId();
   await authorize(jarId, id, userId);
 
@@ -22,7 +22,7 @@ const { jarId, id } = await params;
 });
 
 export const PATCH = withApi<Ctx>(async (req, { params }) => {
-    const { jarId, id } = await params;
+  const { jarId, id } = await params;
   const userId = await requireUserId();
   await authorize(jarId, id, userId);
 
@@ -47,7 +47,7 @@ export const PATCH = withApi<Ctx>(async (req, { params }) => {
 });
 
 export const DELETE = withApi<Ctx>(async (_req, { params }) => {
-    const { jarId, id } = await params;
+  const { jarId, id } = await params;
   const userId = await requireUserId();
   await authorize(jarId, id, userId);
 
