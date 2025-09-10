@@ -21,7 +21,7 @@ const ListQuery = z.object({
 
 const CreateBody = z.object({
   date: z.coerce.date(),
-  amount: z.number().positive(),
+  amount: z.coerce.number().positive(),
   type: TxType,
   currency: z.string().length(3).optional(),
   categoryId: z.string().optional().nullable(),
