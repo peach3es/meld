@@ -20,8 +20,9 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+type Ctx = { params: Promise<{ jarId: string; id: string }> };
 describe("item route /api/jars/:jarId/transactions/:id", () => {
-  const ctx = { params: { jarId: "jar_A", id: "tx_1" } } as any;
+  const ctx = { params: Promise.resolve({ jarId: "jar_A", id: "tx_1" }) } as Ctx;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -58,14 +59,14 @@ describe("item route /api/jars/:jarId/transactions/:id", () => {
     const req = new Request("http://test", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ memo: "ok" }),
+      body: JSON.stringify({ note: "ok" }),
     });
 
     const res = await PATCH(req, ctx);
     expect(res.status).toBe(200);
     expect(prisma.transaction.update).toHaveBeenCalledWith({
       where: { id: "tx_1" },
-      data: expect.objectContaining({ memo: "ok" }),
+      data: expect.objectContaining({ note: "ok" }),
     });
   });
 
