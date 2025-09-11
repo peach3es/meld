@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId, requireMember } from "@/lib/guards";
-import { HttpError, withApi } from "@/lib/withApi";
+import { badRequest, HttpError, withApi } from "@/lib/withApi";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
@@ -67,12 +67,24 @@ export const POST = withApi<{ params: JarParams }, NextRequest>(
     const userId = await requireUserId();
     await requireMember(jarId, userId);
 
-    const body = CreateBody.parse(await req.json());
+    const input = await req.json();
+    const parsed = CreateBody.safeParse(input);
+    if (!parsed.success) {
+      const errTree = z.treeifyError(parsed.error);
+      return badRequest("Invalid input", "ZOD_VALIDATION", errTree);
+    }
+    const body = parsed.data;
 
     // business rules
     if (body.type === "TRANSFER") {
       if (body.categoryId)
         throw new HttpError(400, "Transfers cannot have categoryId.");
+      if (!body.transferCounterpartyJarId) {
+        throw new HttpError(
+          400,
+          "transferCounterpartyJarId is required for TRANSFER."
+        );
+      }
     } else {
       if (!body.categoryId)
         throw new HttpError(400, "categoryId is required for INCOME/EXPENSE.");
@@ -94,7 +106,7 @@ export const POST = withApi<{ params: JarParams }, NextRequest>(
         createdBy: userId,
         type: body.type,
         amount: new Prisma.Decimal(body.amount),
-        currency: body.currency, 
+        currency: body.currency,
         categoryId: body.categoryId ?? null,
         goalId: body.goalId ?? null,
         date: body.date,
