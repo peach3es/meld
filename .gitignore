@@ -9,7 +9,6 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-/.vscode
 # testing
 /coverage
 
@@ -41,3 +40,4 @@ yarn-error.log*
 next-env.d.ts
 
 /generated/prisma
+.vscode/
