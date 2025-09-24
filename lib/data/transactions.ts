@@ -21,17 +21,15 @@ export async function getJarTransactions(
 
   const rows = await prisma.transaction.findMany({
     where: { jarId },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }], // drop createdAt if you don't have it
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     take: Math.max(1, Math.min(limit, 200)),
     select: {
       id: true,
-      date: true, // Date -> string
-      amount: true, // Decimal -> number
-      type: true, // Prisma enum -> string union below
+      date: true,
+      amount: true,
+      type: true,
       currency: true,
       note: true,
-      // Use the relation field name *you actually have*:
-      // If it's `Category` (capital C), keep this; if it's `category`, change it.
       Category: { select: { name: true } },
     },
   });
