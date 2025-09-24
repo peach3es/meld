@@ -1,5 +1,8 @@
 // app/login/page.tsx
+import { Suspense } from "react";
 import LoginForm from "@/components/auth/loginForm";
+
+export const dynamic = "force-dynamic"; // opt out of prerendering for this page
 
 export default function LoginPage() {
   return (
@@ -11,7 +14,15 @@ export default function LoginPage() {
             Use your email and password.
           </p>
         </div>
-        <LoginForm />
+
+        {/* useSearchParams is used inside LoginForm -> wrap in Suspense */}
+        <Suspense
+          fallback={
+            <div className="text-sm text-muted-foreground">Loading…</div>
+          }
+        >
+          <LoginForm />
+        </Suspense>
       </div>
     </main>
   );
