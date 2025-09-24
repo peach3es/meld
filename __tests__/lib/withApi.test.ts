@@ -9,7 +9,9 @@ describe("withApi -> HttpError mapping", () => {
         throw new HttpError(status, `e${status}`, `C${status}`);
       });
 
-      const res = await wrapped(new Request("http://test"));
+      const res = await wrapped(new Request("http://test"), {
+        params: {},
+      } as any);
       expect(res.status).toBe(status);
 
       const body = (await res.json()) as any;
