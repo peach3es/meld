@@ -8,16 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type TxType = "INCOME" | "EXPENSE" | "TRANSFER";
-export type TxItem = {
-  id: string;
-  date: string;
-  amount: number;
-  type: TxType;
-  currency?: string | null;
-  note?: string | null;
-  category?: { name: string | null } | null;
-};
+import type { TxItem } from "@/lib/data/transactions";
 
 export default function TransactionsTable({ items }: { items: TxItem[] }) {
   const fmtDate = (iso: string) =>
