@@ -9,6 +9,12 @@ export default defineConfig({
     css: true, // lets RTL import CSS from shadcn
     include: ["**/*.{test,spec}.[jt]s?(x)"],
   },
+  esbuild: {
+    jsx: "automatic", // <-- important
+    jsxImportSource: "react", // <-- important
+    // If you prefer classic runtime instead, comment the two lines above
+    // and use: jsxInject: `import React from 'react'`,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),

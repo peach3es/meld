@@ -46,7 +46,6 @@ import {
   requireUserId,
   requireMember,
   assertChildOwnership,
-  HttpError,
 } from "@/lib/guards";
 import { supabaseServer } from "@/lib/supabase/server";
 
