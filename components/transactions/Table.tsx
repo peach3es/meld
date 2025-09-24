@@ -7,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
+import { cn } from "@/lib/utils";
 import type { TxItem } from "@/lib/data/transactions";
 
 export default function TransactionsTable({ items }: { items: TxItem[] }) {
@@ -68,9 +68,11 @@ export default function TransactionsTable({ items }: { items: TxItem[] }) {
                   </span>
                 </TableCell>
                 <TableCell
-                  className={`text-right ${
-                    signed < 0 ? "text-red-600" : "text-emerald-600"
-                  }`}
+                  className={cn(
+                    `text-right ${
+                      signed < 0 ? "text-red-600" : "text-emerald-600"
+                    }`
+                  )}
                 >
                   {fmtMoney(signed, tx.currency)}
                 </TableCell>
