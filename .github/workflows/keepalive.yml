@@ -3,7 +3,7 @@ name: Keep Supabase Warm
 on:
   schedule:
     # Daily at 13:00 UTC (pick any time)
-    - cron: "0 13 * * *"
+    - cron: "0 */2 * * *"
   workflow_dispatch: {} # allow manual runs
 
 jobs:
