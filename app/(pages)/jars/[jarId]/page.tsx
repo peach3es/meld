@@ -1,7 +1,7 @@
 // app/jars/[jarId]/page.tsx
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import TransactionsTable from "@/components/transactions/Table";
+import TransactionsTable from "@/components/transactions/transactionTable";
 import { getJarTransactions } from "@/lib/data/transactions";
 import { HttpError } from "@/lib/withApi";
 
