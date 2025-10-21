@@ -51,6 +51,7 @@ describe("getJarTransactions", () => {
         currency: "CAD",
         note: "hello",
         Category: { name: "Food" },
+        Jar: undefined,
       },
     ] as any[]);
 
@@ -64,6 +65,7 @@ describe("getJarTransactions", () => {
         currency: "CAD",
         note: "hello",
         category: { name: "Food" },
+        jar: null,
       },
     ];
     expect(items).toEqual(expected);
@@ -120,6 +122,7 @@ describe("getJarTransactions", () => {
         currency: null,
         note: null,
         category: null,
+        jar: null,
       },
     ]);
   });

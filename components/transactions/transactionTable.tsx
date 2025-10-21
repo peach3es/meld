@@ -13,7 +13,15 @@ import {
 import { cn } from "@/lib/utils";
 import type { TxItem } from "@/lib/middleware/transactions";
 
-export default function TransactionsTable({ items }: { items: TxItem[] }) {
+type TransactionsTableProps = {
+  items: TxItem[];
+  showJarColumn?: boolean;
+};
+
+export default function TransactionsTable({
+  items,
+  showJarColumn = false,
+}: TransactionsTableProps) {
   const fmtDate = (iso: string) =>
     new Intl.DateTimeFormat(DISPLAY_LOCALE, { dateStyle: "medium" }).format(
       new Date(iso)
@@ -43,6 +51,7 @@ export default function TransactionsTable({ items }: { items: TxItem[] }) {
       <Table>
         <TableHeader>
           <TableRow>
+            {showJarColumn && <TableHead className="w-[160px]">Jar</TableHead>}
             <TableHead className="w-[130px]">Date</TableHead>
             <TableHead className="min-w-[180px]">Note</TableHead>
             <TableHead className="w-[160px]">Category</TableHead>
@@ -60,10 +69,15 @@ export default function TransactionsTable({ items }: { items: TxItem[] }) {
                 : tx.amount;
             return (
               <TableRow key={tx.id}>
+                {showJarColumn && (
+                  <TableCell className="truncate">
+                    {tx.jar?.name ?? tx.jar?.id ?? "-"}
+                  </TableCell>
+                )}
                 <TableCell>{fmtDate(tx.date)}</TableCell>
-                <TableCell className="truncate">{tx.note ?? "—"}</TableCell>
+                <TableCell className="truncate">{tx.note ?? "-"}</TableCell>
                 <TableCell className="truncate">
-                  {tx.category?.name ?? "—"}
+                  {tx.category?.name ?? "-"}
                 </TableCell>
                 <TableCell className="text-right">
                   <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs">

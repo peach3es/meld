@@ -12,6 +12,7 @@ const row = (o: Partial<TxItem>): TxItem => ({
   currency: "USD",
   note: "Salary",
   category: { name: "Work" },
+  jar: null,
   ...o,
 });
 
@@ -43,8 +44,8 @@ describe("<TransactionsTable />", () => {
     expect(screen.getByText("Food")).toBeInTheDocument();
 
     // amount formatting (locale varies; match loosely)
-    expect(screen.getByText(/\$?150(\.00)?/)).toBeInTheDocument();
-    expect(screen.getByText(/-?\$?25(\.5+)?/)).toBeInTheDocument();
+    expect(screen.getByText(/(CA)?\$?150(\.00)?/)).toBeInTheDocument();
+    expect(screen.getByText(/-?(CA)?\$?25(\.5+)?/)).toBeInTheDocument();
   });
 
   it("applies red for expenses and green for income", () => {
@@ -60,5 +61,14 @@ describe("<TransactionsTable />", () => {
     expect([...cells].some((c) => c.className.includes("text-red-600"))).toBe(
       true
     );
+  });
+
+  it("can render a jar column when requested", () => {
+    const items: TxItem[] = [
+      row({ id: "1", jar: { id: "jar-1", name: "Main Jar" } }),
+    ];
+    render(<TransactionsTable items={items} showJarColumn />);
+    expect(screen.getByRole("columnheader", { name: /jar/i })).toBeInTheDocument();
+    expect(screen.getByText(/main jar/i)).toBeInTheDocument();
   });
 });
