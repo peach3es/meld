@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import TransactionsTable from "@/components/transactions/transactionTable";
-import type { TxItem } from "@/lib/data/transactions";
+import type { TxItem } from "@/lib/middleware/transactions";
 
 const row = (o: Partial<TxItem>): TxItem => ({
   id: "t1",

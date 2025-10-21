@@ -18,7 +18,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId, requireMember } from "@/lib/guards";
 
 // import the function under test (after mocks)
-import { getJarTransactions, type TxItem } from "@/lib/data/transactions";
+import { getJarTransactions, type TxItem } from "@/lib/middleware/transactions";
 
 // Decimal-like object that `Number()` can read (our code does `Number(r.amount)`)
 class DecimalLike {

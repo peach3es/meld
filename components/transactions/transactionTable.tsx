@@ -1,4 +1,7 @@
 "use client";
+
+const DISPLAY_LOCALE = "en-CA";
+const DEFAULT_CURRENCY = "CAD";
 import {
   Table,
   TableBody,
@@ -8,17 +11,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import type { TxItem } from "@/lib/data/transactions";
+import type { TxItem } from "@/lib/middleware/transactions";
 
 export default function TransactionsTable({ items }: { items: TxItem[] }) {
   const fmtDate = (iso: string) =>
-    new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+    new Intl.DateTimeFormat(DISPLAY_LOCALE, { dateStyle: "medium" }).format(
       new Date(iso)
     );
   const fmtMoney = (amt: number, cur?: string | null) => {
-    const c = cur ?? "USD";
+    const c = cur ?? DEFAULT_CURRENCY;
     try {
-      return new Intl.NumberFormat(undefined, {
+      return new Intl.NumberFormat(DISPLAY_LOCALE, {
         style: "currency",
         currency: c,
       }).format(amt);
