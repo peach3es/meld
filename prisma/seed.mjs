@@ -65,18 +65,65 @@ async function main() {
   // 2) Owner memberships
   await Promise.all([ensureMember(operating.id), ensureMember(savings.id)]);
 
-  // 3) Categories (for Operating jar)
-  const groceries = await ensureCategory(
-    operating.id,
+  // 3) Categories
+  // Operating gets the full set; Savings (Emergency Fund) intentionally gets none.
+  const EXPENSES = [
+    // Housing
+    "Rent",
+    "Home Insurance",
+    "Electricity",
+    "Water",
+    "Gas",
+    "Internet",
+    "Mobile",
+    // Transport
+    "Fuel",
+    "Public Transit",
+    "Parking/Tolls",
+    "Maintenance",
+    "Car Insurance",
+    "Car Payment",
+    // Food
     "Groceries",
-    CategoryType.EXPENSE
-  );
-  const rent = await ensureCategory(operating.id, "Rent", CategoryType.EXPENSE);
-  const salaryCat = await ensureCategory(
-    operating.id,
-    "Salary",
-    CategoryType.INCOME
-  );
+    "Dining Out",
+    // Health
+    "Pharmacy/Medical",
+    "Dental/Vision",
+    // Subscriptions
+    "Streaming",
+    "Cloud/Software",
+    // Personal & Life
+    "Clothing",
+    "Gifts/Donations",
+    "Entertainment",
+    "Travel",
+    "Pets",
+    "Misc",
+  ];
+
+  const INCOME = ["Salary", "Bonus", "Refund/Reimbursement"];
+
+  // Seed Operating categories and keep references to key ones
+  const createdCategories = {};
+  for (const name of EXPENSES) {
+    createdCategories[name] = await ensureCategory(
+      operating.id,
+      name,
+      CategoryType.EXPENSE
+    );
+  }
+  for (const name of INCOME) {
+    createdCategories[name] = await ensureCategory(
+      operating.id,
+      name,
+      CategoryType.INCOME
+    );
+  }
+
+  // Extract the ones we use later
+  const groceries = createdCategories["Groceries"];
+  const rent = createdCategories["Rent"];
+  const salaryCat = createdCategories["Salary"];
 
   // 4) Budgets on Operating jar
   await prisma.budget.createMany({
