@@ -32,6 +32,15 @@ export type JarOverview = {
   goals: JarGoalSummary[];
 };
 
+export type JarListItem = JarSummary & {
+  balance: number;
+  incomeTotal: number;
+  expenseTotal: number;
+  transferTotal: number;
+  transactionCount: number;
+  createdAt: string;
+};
+
 export async function getJarSummary(jarId: string): Promise<JarSummary> {
   const userId = await requireUserId();
   await requireMember(jarId, userId);
@@ -165,4 +174,85 @@ export async function getJarOverview(jarId: string): Promise<JarOverview> {
     recentTransactions,
     goals,
   };
+}
+
+export async function getUserJars(): Promise<JarListItem[]> {
+  const userId = await requireUserId();
+  const memberships = await prisma.jarMember.findMany({
+    where: { userId },
+    select: { jarId: true },
+  });
+
+  if (!memberships.length) {
+    return [];
+  }
+
+  const jarIds = memberships.map((m) => m.jarId);
+  const [jarRows, totalsByJarAndType, countsByJar] = await Promise.all([
+    prisma.jar.findMany({
+      where: { id: { in: jarIds } },
+      select: {
+        id: true,
+        name: true,
+        currency: true,
+        createdAt: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.transaction.groupBy({
+      by: ["jarId", "type"],
+      where: { jarId: { in: jarIds } },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.groupBy({
+      by: ["jarId"],
+      where: { jarId: { in: jarIds } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const totalsMap = new Map<
+    string,
+    { income: number; expense: number; transfer: number }
+  >();
+  for (const row of totalsByJarAndType) {
+    const bucket = totalsMap.get(row.jarId) ?? {
+      income: 0,
+      expense: 0,
+      transfer: 0,
+    };
+    const value = Number(row._sum.amount ?? 0);
+    if (row.type === "INCOME") bucket.income = value;
+    else if (row.type === "EXPENSE") bucket.expense = value;
+    else bucket.transfer = value;
+    totalsMap.set(row.jarId, bucket);
+  }
+
+  const countsMap = countsByJar.reduce<Record<string, number>>(
+    (acc, row) => {
+      acc[row.jarId] = row._count._all ?? 0;
+      return acc;
+    },
+    {}
+  );
+
+  return jarRows.map((row) => {
+    const totals = totalsMap.get(row.id) ?? {
+      income: 0,
+      expense: 0,
+      transfer: 0,
+    };
+    const balance = totals.income - totals.expense + totals.transfer;
+    return {
+      id: row.id,
+      name: row.name,
+      currency: row.currency,
+      createdAt: row.createdAt.toISOString(),
+      balance,
+      incomeTotal: totals.income,
+      expenseTotal: totals.expense,
+      transferTotal: totals.transfer,
+      transactionCount: countsMap[row.id] ?? 0,
+    };
+  });
 }
