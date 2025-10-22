@@ -1,19 +1,39 @@
 version: 2.1
 
-jobs:
-  install_dependencies:
+executors:
+  node:
     docker:
       - image: cimg/node:20.19.5
+    working_directory: ~/project
+    environment:
+      CI: "true"
+
+jobs:
+  test:
+    executor: node
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-npm-deps-{{ checksum "package-lock.json" }}
+            - v1-npm-deps-
       - run:
-          name: Install Dependencies
+          name: Install dependencies
           command: |
-            npm install
+            npm i
             npm ci
+      - save_cache:
+          key: v1-npm-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - ~/.npm
+      - run:
+          name: Run Vitest with coverage
+          command: npm run test -- --run --coverage
+      - store_artifacts:
+          path: coverage
+          destination: coverage
 
 workflows:
-  version: 2
-  install_dependencies_workflow:
+  test_workflow:
     jobs:
-      - install_dependencies
+      - test
