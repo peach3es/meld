@@ -17,7 +17,8 @@
     "db:migrate:dev": "dotenv -e .env.local -- prisma migrate dev",
     "db:reset:dev": "dotenv -e .env.local -- prisma migrate reset --force --skip-seed && node --env-file=.env.local prisma/seed.mjs",
     "db:seed:dev": "node --env-file=.env.local prisma/seed.mjs",
-    "studio": "dotenv -e .env.local -- prisma studio"
+    "studio": "dotenv -e .env.local -- prisma studio",
+    "mcp:test-writer": "node ./mcp/test-writer/server.mts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -52,6 +53,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "chokidar": "^3.5.3",
     "dotenv-cli": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
@@ -59,9 +61,11 @@
     "prisma": "^6.14.0",
     "supabase": "^2.39.2",
     "tailwindcss": "^4",
+    "ts-morph": "^27.0.2",
     "tw-animate-css": "^1.3.7",
     "typescript": "^5",
     "vite": "^7.1.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vitest-axe": "^0.1.0"
   }
 }

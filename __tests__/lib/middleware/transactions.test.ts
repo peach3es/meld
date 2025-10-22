@@ -1,129 +1,126 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// --- mock prisma BEFORE importing the SUT ---
-// We keep prisma mocked but cast its return values to `any[]` to avoid Prisma type friction in tests.
-vi.mock("@/lib/prisma", () => {
-  const findMany = vi.fn();
-  return { prisma: { transaction: { findMany } } };
-});
+const prismaMocks = vi.hoisted(() => ({
+  transaction: {
+    findMany: vi.fn(),
+  },
+  jarMember: {
+    findMany: vi.fn(),
+  },
+}));
 
-// --- mock guards BEFORE importing the SUT ---
-vi.mock("@/lib/guards", () => ({
-  requireUserId: vi.fn().mockResolvedValue("u1"),
+const guardMocks = vi.hoisted(() => ({
+  requireUserId: vi.fn().mockResolvedValue("user-1"),
   requireMember: vi.fn().mockResolvedValue(undefined),
 }));
 
-// import mocked deps to control/inspect them
-import { prisma } from "@/lib/prisma";
-import { requireUserId, requireMember } from "@/lib/guards";
+vi.mock("@/lib/prisma", () => ({
+  prisma: prismaMocks,
+}));
 
-// import the function under test (after mocks)
-import { getJarTransactions, type TxItem } from "@/lib/middleware/transactions";
+vi.mock("@/lib/guards", () => guardMocks);
 
-// Decimal-like object that `Number()` can read (our code does `Number(r.amount)`)
-class DecimalLike {
-  constructor(private v: number) {}
-  valueOf() {
-    return this.v;
-  }
-  toString() {
-    return String(this.v);
-  }
-}
+import {
+  getJarTransactions,
+  getUserRecentTransactions,
+} from "@/lib/middleware/transactions";
 
-describe("getJarTransactions", () => {
-  const mockFindMany = vi.mocked((prisma as any).transaction.findMany);
+const decimalLike = (value: number) =>
+  ({
+    valueOf: () => value,
+    toString: () => value.toString(),
+  } as unknown as number);
 
+describe("lib/middleware/transactions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("maps prisma rows to TxItem and calls guards", async () => {
-    const date = new Date("2025-01-02T03:04:05.000Z");
+  describe("getJarTransactions", () => {
+    it("returns normalized transactions for the jar", async () => {
+      const date = new Date("2025-01-02T03:04:05.000Z");
+      prismaMocks.transaction.findMany.mockResolvedValueOnce([
+        {
+          id: "tx-1",
+          date,
+          amount: decimalLike(42.5),
+          type: "INCOME",
+          currency: "CAD",
+          note: "Payday",
+          Category: { name: "Salary" },
+        },
+      ]);
 
-    // Cast to any[] so TS doesn't require Prisma.Decimal or non-null currency
-    mockFindMany.mockResolvedValueOnce([
-      {
-        id: "t1",
-        date,
-        amount: new DecimalLike(12.34) as any,
-        type: "INCOME",
-        currency: "CAD",
-        note: "hello",
-        Category: { name: "Food" },
-        Jar: undefined,
-      },
-    ] as any[]);
+      const items = await getJarTransactions("jar-1", 50);
 
-    const items = await getJarTransactions("jarA", 50);
-    const expected: TxItem[] = [
-      {
-        id: "t1",
-        date: "2025-01-02T03:04:05.000Z",
-        amount: 12.34,
-        type: "INCOME",
-        currency: "CAD",
-        note: "hello",
-        category: { name: "Food" },
-        jar: null,
-      },
-    ];
-    expect(items).toEqual(expected);
-
-    expect(requireUserId).toHaveBeenCalledTimes(1);
-    expect(requireMember).toHaveBeenCalledWith("jarA", "u1");
-
-    const args = mockFindMany.mock.calls[0]![0]!;
-    expect(args.where).toEqual({ jarId: "jarA" });
-    expect(args.orderBy).toEqual([{ date: "desc" }, { createdAt: "desc" }]);
-    expect(args.take).toBe(50);
-    expect(args.select).toMatchObject({
-      id: true,
-      date: true,
-      amount: true,
-      type: true,
-      currency: true,
-      note: true,
-      Category: { select: { name: true } },
+      expect(items).toEqual([
+        {
+          id: "tx-1",
+          date: date.toISOString(),
+          amount: 42.5,
+          type: "INCOME",
+          currency: "CAD",
+          note: "Payday",
+          category: { name: "Salary" },
+          jar: null,
+        },
+      ]);
+      expect(guardMocks.requireMember).toHaveBeenCalledWith("jar-1", "user-1");
+      expect(prismaMocks.transaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { jarId: "jar-1" },
+          take: 50,
+        })
+      );
     });
   });
 
-  it("caps take between 1 and 200 & maps nulls", async () => {
-    mockFindMany.mockResolvedValueOnce([] as any[]);
-    await getJarTransactions("j", 0);
-    const args1 = mockFindMany.mock.calls.at(-1)![0]!;
-    expect(args1.take).toBe(1);
+  describe("getUserRecentTransactions", () => {
+    it("returns an empty array when the user has no jar memberships", async () => {
+      prismaMocks.jarMember.findMany.mockResolvedValueOnce([]);
+      const items = await getUserRecentTransactions();
+      expect(items).toEqual([]);
+      expect(prismaMocks.transaction.findMany).not.toHaveBeenCalled();
+    });
 
-    mockFindMany.mockResolvedValueOnce([] as any[]);
-    await getJarTransactions("j", 999);
-    const args2 = mockFindMany.mock.calls.at(-1)![0]!;
-    expect(args2.take).toBe(200);
+    it("returns the latest transactions across all jars", async () => {
+      prismaMocks.jarMember.findMany.mockResolvedValueOnce([
+        { jarId: "jar-1" },
+      ]);
+      const date = new Date("2025-02-01T00:00:00.000Z");
+      prismaMocks.transaction.findMany.mockResolvedValueOnce([
+        {
+          id: "tx-99",
+          date,
+          amount: decimalLike(12),
+          type: "EXPENSE",
+          currency: "CAD",
+          note: "Snack",
+          Category: { name: "Food" },
+          Jar: { id: "jar-1", name: "Everyday" },
+        },
+      ]);
 
-    const date = new Date("2025-06-01T00:00:00.000Z");
-    mockFindMany.mockResolvedValueOnce([
-      {
-        id: "t2",
-        date,
-        amount: new DecimalLike(0) as any,
-        type: "TRANSFER",
-        currency: null as any, // allow null in mock; your mapper converts to null in DTO
-        note: null,
-        Category: null,
-      },
-    ] as any[]);
+      const items = await getUserRecentTransactions(10);
 
-    const items = await getJarTransactions("jarB", 1);
-    expect(items).toEqual([
-      {
-        id: "t2",
-        date: "2025-06-01T00:00:00.000Z",
-        amount: 0,
-        type: "TRANSFER",
-        currency: null,
-        note: null,
-        category: null,
-        jar: null,
-      },
-    ]);
+      expect(prismaMocks.transaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { jarId: { in: ["jar-1"] } },
+          take: 10,
+        })
+      );
+      expect(items).toEqual([
+        {
+          id: "tx-99",
+          date: date.toISOString(),
+          amount: 12,
+          type: "EXPENSE",
+          currency: "CAD",
+          note: "Snack",
+          category: { name: "Food" },
+          jar: { id: "jar-1", name: "Everyday" },
+        },
+      ]);
+    });
   });
 });

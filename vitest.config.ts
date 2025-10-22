@@ -1,25 +1,36 @@
+// vitest.config.ts
 import { defineConfig } from "vitest/config";
-import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: ["./__tests__/setup.ts"],
-    css: true, // lets RTL import CSS from shadcn
+    setupFiles: ["./__tests__/setup.ts"], // load jest-dom here (see below)
+    css: true, // allow importing CSS (e.g., shadcn)
     include: ["**/*.{test,spec}.[jt]s?(x)"],
   },
+
   esbuild: {
-    jsx: "automatic", // <-- important
-    jsxImportSource: "react", // <-- important
-    // If you prefer classic runtime instead, comment the two lines above
-    // and use: jsxInject: `import React from 'react'`,
+    jsx: "automatic",
+    jsxImportSource: "react",
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "."),
-      "@/*": path.resolve(__dirname, "/*"),
-      "server-only": path.resolve(__dirname, "__tests__/mocks/server-only.ts"),
+      // Use project root; if you have a /src layout, change to resolve(__dirname, "src")
+      "@": resolve(__dirname, "."),
+      // Handy mocks for Next in tests (create these files)
+      "server-only": resolve(__dirname, "__tests__/mocks/server-only.ts"),
+      "next/navigation": resolve(
+        __dirname,
+        "__tests__/mocks/next-navigation.ts"
+      ),
+      "next/link": resolve(__dirname, "__tests__/mocks/next-link.tsx"),
+      "next/image": resolve(__dirname, "__tests__/mocks/next-image.tsx"),
     },
   },
 });
