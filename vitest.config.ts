@@ -8,6 +8,11 @@ export default defineConfig({
     setupFiles: ["./__tests__/setup.ts"],
     css: true, // lets RTL import CSS from shadcn
     include: ["**/*.{test,spec}.[jt]s?(x)"],
+    coverage: {
+      reporter: ["text", "lcov"],
+      reportsDirectory: "coverage",
+      exclude: ["**/__tests__/**"],
+    },
   },
   esbuild: {
     jsx: "automatic", // <-- important
